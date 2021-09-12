@@ -1,0 +1,33 @@
+---
+title: "Assignment 1"
+author: "Lukas van der Watt"
+date: "9/11/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+```{r}
+Dataset <- read.csv("National_Accounts.csv") #Importing the downloaded dataset from a ",csv" excel file format
+Dataset #Shocasing the National Accounts dataset
+# Link to the data source can be seen here: https://www.stats.govt.nz/large-datasets/csv-files-for-download/
+```
+
+```{r}
+x <- Dataset[,3] #Isolating the 3rd column called "value" from the dataset
+newdata <- sort(x,decreasing = FALSE) #Sorting the Isolated dataset called "x" in Increasing order and calling it "newdata"
+newdata# Showcasing "newdata"
+plot(newdata)#Plotting the single variable "value" in Increasing order. This can be seen by the rising strightline in the plot below.
+```
+```{r}
+dates <- Dataset[, 2] #Isolating the 2nd Column of the Dataset and assingning a name called "dates"
+plot(dates,newdata)#Plotting the period variable vs. the ordered values column
+```
+
+```{r}
+plot(dates,x)# Plotting the period vs the original values column to be compared to the previous plot
+```
+
