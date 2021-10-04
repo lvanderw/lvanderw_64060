@@ -1,0 +1,33 @@
+---
+title: "Assignment 2_ML"
+author: "Lukas van der Watt"
+date: "9/30/2021"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+UB_data <- read.csv("UniversalBank.csv")
+
+```
+
+Partition the data into training, validation and test sets. Normally devided into 60%, 20%, 20%. However for this assignment only the train and validation is required in form of 60%, 40% respectively.
+```{r}
+
+set.seed(111)
+train_ind  <- sample(row.names(UB_data),0.6*dim(UB_data)[1])
+valid_ind  <- sample(row.names(UB_data),train_ind)
+train.data <- UB_data[train_ind, ]
+valid.data <- UB_data[valid_ind, ]
+```
+Making the test set!
+```{r}
+#new.df <- data.frame(Age <- 40, Experience <- 10, Income <- 84, Family <- 2, CCAvg <- 2, Education_1 <- 0, Education_2 <- 1, Education_3 <- 0, Mortgage <- 0 , Securities.Account <- 0, CD.Account <- 0 , Online <- 1 , CreditCard <- 1)
+```
+
+Use the traing data to create the normalized model. 
+Normalize all the numeric columns
+
