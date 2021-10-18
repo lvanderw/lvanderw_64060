@@ -1,0 +1,107 @@
+---
+title: "Assignment 3_ML"
+author: "Lukas van der Watt"
+date: "10/16/2021"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+#Calling packages required to run the various commands
+library(e1071)
+library(caret)
+UB.data <- read.csv("UniversalBank.csv") #reading the .csv file for universal bank data
+str(UB.data) #Looking at the structure of the data to see what kind of variables are present.
+```
+```{r}
+#converting to factors
+UB.data$Personal.Loan <- as.factor(UB.data$Personal.Loan) #Converting the Personal Loan variable to as.factor
+UB.data$Online <- as.factor(UB.data$Online)#Converting the Online variable to as.factor
+UB.data$CreditCard <- as.factor(UB.data$CreditCard)#Converting the CreditCard variable to as.factor
+str(UB.data)
+```
+```{r}
+#Partition the data into training(60) validation(40)
+selected.var <- c(10,13,14) #Selecting variables to be partitioned
+
+set.seed(123) #randomize
+train.in <- createDataPartition(UB.data$Online,p = 0.6, list = FALSE) #creating a training index with the stratification variable (online) that contains 60% of the Universal bank data
+ub.data.train <- UB.data[train.in,selected.var] #Training set
+ub.data.valid <- UB.data[-train.in,selected.var] #Validation set
+str(ub.data.train) #structure of the training set
+```
+PART A : Creating a Pivot Table
+```{r}
+#Method 1: This shows the pivot table with row variables (Online and CreditCard) and the column variables(Personal.Loan) This table shows the count
+attach(ub.data.train) # Attaching the training set to the following statements
+ftable(Personal.Loan, CreditCard, Online) #Creating a pivot table with personal loan as a column variable and the Online and CreditCard
+detach(ub.data.train)
+```
+Part B Ans. P(Personal.Loan=1 | CreditCard=1 , Online=1) = 47/(47+478) = 0.08952381
+```{r}
+#Method 2: This shows the pivot table with row variables (Personal Loan and CreditCard) and the column variables(Online). This prop table shows the probabilities 
+prop.table(ftable(ub.data.train, row.vars = c(1,3), column.vars = 2 ),margin = 1)
+```
+
+PART C
+```{r}
+#Creating two seperate pivot tables 
+attach(ub.data.train)
+prop.table(table(Personal.Loan, Online), margin = 1)
+prop.table(table(Personal.Loan, CreditCard), margin = 1)
+detach(ub.data.train)
+
+```
+
+i.   P(CC = 1 | Loan = 1) (CC=1 means CreditCard holder, Loan=1 means Loan was accepted)
+          Ans. = 0.30249
+          
+ii.  P(Online = 1 | Loan = 1)
+          Ans. = 0.59075
+          
+iii. P(Loan = 1) (the proportion of loan acceptors)
+          Ans. = (77+119+38+47)/3001 = 0.09363545
+          
+iv.  P(CC = 1 | Loan = 0)
+          Ans. = 0.2893382
+          
+v.   P(Online = 1 | Loan = 0)
+          Ans. = 0.5974265
+          
+vi.  P(Loan = 0)
+          Ans. = (786+309+1147+478)/3001 = 0.9063645
+          or   = 1-P(Loan=1) = 1-0.09363545 =  0.9063646
+
+PART E:  P(Loan = 1 | CC= 1, Online = 1) 
+= [P(CC=1 , Online=1 | Loan = 1)*P(Loan=1)]/P(CC=1 , Online=1)
+
+= [P(CC=1 | Loan=1) * P(Online=1 | Loan=1)* P(Loan=1)]/[P(CC=1 | Loan=1) * P(Online=1 | Loan=1) * P(Loan=1)
++P(CC=1 | Loan=0) * P(Online=1 | Loan=0)*P(Loan=0)]
+
+=((0.3024911) * (0.59075) * (0.09363545))/(((0.3024911) * (0.59075) * (0.09363545))+((0.2893382) * (0.5974265) * (0.9063645)))
+
+= 0.09649284
+
+
+*******PART F: The Results between the Pivot table and calculated Naive Bayes value differs. For the Naive Bayes a value probability of 0.09649284 was achieved whereas the Pivot Table indicated a probability of 0.08952381 for the P(Loan=1 | CC=1 , Online=1) statement. The Naive Bayes calculation is higher than the value in the Pivot table. The Naive Bayes calculation is not exact as we are making assumptions. Only the numerator is approximated in this calculation. The probability value in the pivot table is therefore more accurate.
+
+PART G:
+```{r}
+UBdata.nb <- naiveBayes(Personal.Loan~., data = ub.data.train)# Creating the NAivive Bayes Model on the training set
+UBdata.nb
+```
+Naive Bayes Calculation of P(Loan = 1 | CC = 1, Online = 1) = [P(CC=1 , Online=1 | Loan = 1)*P(Loan=1)]/P(CC=1 , Online=1)
+
+= ((0.3024911) * (0.5907473) * (0.09363545)) / (((0.3024911) * (0.5907473) * (0.09363545))+((0.2893382) * (0.5974265) * (0.90636455)))
+
+= 0.09649244
+
+Number in E = 0.09649284
+
+As we can see the values are essentially the same between Part E and Part G values.
+
