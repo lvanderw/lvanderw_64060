@@ -1,0 +1,81 @@
+---
+title: "Assignment 4"
+author: "Lukas van der Watt"
+date: "11/7/2021"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)  # used in data manipulation
+library(factoextra) # for clustering algorithms & visualization
+library(ISLR)
+library(cluster)
+library(dplyr)
+set.seed(123)
+```
+
+```{r}
+Pharm <- read.csv('Pharmaceuticals.csv')
+str(Pharm)
+```
+From the structure we see that variables 3 to 11 are numerical. We will use thes variables for the k means clustering analysis.
+```{r}
+P_data <- Pharm[,3:11]
+P_data <- scale(P_data) # We need to scale the data in order to have releavant numbers that are free of variations in units. This allows us to get a consistent measure of distance.
+distance <- get_dist(P_data)
+#fviz_dist(distance)
+```
+
+```{r}
+#Determining K value
+fviz_nbclust(P_data,kmeans,method = "wss") # We first have to determine the optimal k value using the "elbow chart" 
+#(Within-cluster sum of squares - WSS ) measures "compactness" of clustersthe meaning the smaller the value the more similar the observations/items in the cluster are.
+```
+In the elbow chart we identify the "Elbow Point" which is the optimal number of clusters as k=5, because we can see that as the k value increases the sum of squares decreases at a smaller rate. (Slope is lesser than that of the first four k-values).
+Going beyond a k value of 5  (5 clusters) would bring less improvement to cluster homogeneity.
+```{r}
+fviz_nbclust(P_data,kmeans,method = "silhouette") # In this statement we are essentially doing the same thing we did in the elbow chart which is determining the best value for k (optimal number of clusters thet should be formed). This is called the silhouette method and we can see the max silhoutte width occuring at k = 5
+
+```
+Both the Elbow chart and the Silhouette chart indicate the same results.
+```{r}
+# K Is a hyperparamater calculated externally from the data. Note: A parameter is calculated from the data.
+K5 <- kmeans(P_data, centers = 5, nstart = 25) # using kmeans (euclidean distance) where k = 5 and the number of restarts = 25.
+# Visualize the output
+K5$centers # output shows the centroids of each cluster per column variable
+K5$size # This shows the number of observations/items in each cluster
+K5$cluster[c(1,2,3,19,20,21)] # This can identify in which cluster an observation belongs in.
+fviz_cluster(K5, data = P_data) # Visualize the output
+```
+In this elbow chart we see the justification of the 5 clusters and how they are formed with the various observations. For example We can easily see to which cluster each observation belongs to. In the case of the *3rd cluster for example the 2nd and 18th observation is clustered together.
+By looking at the centroids we can also see a trend of the observations where market growth is smaller in general having a negative value with the exception of one observation.  This forms a cluster of values below the 0 axis.Similarly most other variable centroids can be looked at to find a pattern which will attribute to the cluster distribution. For example we can see that cluster 4 has a low Market_Cap, Beta and PE_Ratio. Cluster 1 has a low Market_Cap, PE_Ratio,ROE,ROA and Asset_Turnover.    Cluster 5 has a high market_cap, ROE,ROA and Asset_Turnover.
+
+```{r}
+k <- kmeans(P_data,centers=5)
+```
+
+```{r}
+#Part C
+aggregate(P_data,list(k$cluster),FUN = mean)
+Pharm_with_clusters <- mutate(Pharm,(k$cluster))
+head(Pharm_with_clusters)
+LA <- Pharm_with_clusters %>% select(,(c(12,13,14,15)))
+colnames(LA) <- c('Median_Recommendation' , 'Location' , 'Exchange', 'Cluster')
+LA <- LA[order(LA$Cluster),]
+LA
+#This new data frame shows the cluster added as a column to the original data.
+```
+
+PART D
+we can name the Clusters based on the information they contain. 
+Cluster 1 : New York Stock Exchange for US, UK and Switzerland
+Cluster 2 : New York Stock Exchange for US and UK only
+Cluster 3 : Diverse Exchange (Most diverse exchange in the data)
+Cluster 4 : New York Stock Exchange for US, UK and France
+Cluster 5 : New York Stock Exchange for US, Canada and Germany
