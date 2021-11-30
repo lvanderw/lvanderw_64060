@@ -1,0 +1,128 @@
+---
+title: "Assignment 5"
+author: "Lukas van der Watt"
+date: "11/26/2021"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+library(dplyr)
+library(tidyverse)
+library(cluster)
+library(caret)
+library(factoextra)
+library(dendextend)
+```
+
+PART 1
+```{r}
+data <- read.csv("Cereals.csv")
+data <- na.omit(data) #This omits the rows with NA values in some of the column
+newdata <- data[,4:16]
+str(newdata)
+```
+
+```{r}
+#Standardizing/Scaling the data.Distance measures used in clustering are highly influenced by the scale of each variable, so the variables with larger scales have a greater influence over the total distance. We do this so that the clustering does not overly depend on an arbitrary unit and is therefore skewed/biased towards a certain variable
+dataCereals <- as.data.frame(scale(newdata))
+str(dataCereals)
+```
+
+
+```{r}
+# Dissimilarity matrix
+d <- dist(dataCereals, method = "euclidean")
+
+# Hierarchical clustering using different types of Linkage
+hc1 <- agnes(d, method = "complete" )
+hc2 <- agnes(d, method = "single" )
+hc3 <- agnes(d, method = "average" )
+hc4 <- agnes(d, method = "ward" )
+# Looking at the Aglomerative Coefficients of the different linkage methods
+print(hc1$ac)
+print(hc2$ac)
+print(hc3$ac)
+print(hc4$ac) #Since this is the highest aglomerative coeffiecient (value:0.9046042), it has the strongest clustering structure. We will choose the Ward linkage method.
+
+# Plot the obtained dendogram
+pltree(hc4, cex = 0.6, hang = -1, main = "Dendogram of Agness (Ward Linkage)",ylab = "Height (Distance Between Clusters)")
+rect.hclust(hc4,k=6,border = 1:6) # k=6 is chosen
+```
+We can see that 6 clusters are formed at the height of approx 4.5 
+
+HOW MANY CLUSTERS SHOULD BE CHOSEN?
+PART 2
+```{r}
+clustercount <- agnes(dataCereals, method="ward")
+#Plotting the obtained dendogram with the agnes linkage method using the dataCereals dataset.
+pltree(clustercount,cex = 0.6,hang = -1)
+rect.hclust(clustercount,k=6,border = 1:6)
+```
+```{r}
+#Creating a cutoff on the dendogram at the height (Distance Between Clusters) of 10
+Cutoff = cutree(clustercount,h=10)
+Cereal_Clust <- mutate(dataCereals,cluster=Cutoff)
+max(Cereal_Clust$cluster) #Showing the max number of the cluster column which will be the number of clusters formed from the specific cutoff chosen.
+```
+In the above output we see that 6 clusters should be chosen at the the Height of 10.
+
+COMMENT ON THE STRUCTURE & STABILITY OF THE CLUSTER FORMED
+PART 3
+Firstly the structure of the dataset is determined to be the ward linkage method as that proved to have the highest algomertive coefficient.
+```{r}
+set.seed(123) #randomize
+train.ind <- createDataPartition(Cereal_Clust$cluster,p = 0.65, list = FALSE)
+training_set <- Cereal_Clust[train.ind,] #Training set making up 65% of the data
+valid_set <- Cereal_Clust[-train.ind,] #Validation set making up 25% of the data
+#Using the agnes ward linkage method to cluster the training set
+HC_stab <- agnes(training_set,method = "ward")
+
+Sec_Cluster <- cutree(HC_stab,k=4)
+
+#Calculate the centers 
+Center <- mutate(training_set,Sec_Cluster)
+Center_1 <- colMeans(Center[Center$Sec_Cluster==1,])
+Center_2 <- colMeans(Center[Center$Sec_Cluster==2,])
+Center_3<- colMeans(Center[Center$Sec_Cluster==3,])
+Center_4 <- colMeans(Center[Center$Sec_Cluster==4,])
+
+Comb_Center <- as.data.frame(rbind(Center_1,Center_2,Center_3,Center_4))
+
+#d_s <- rbind(Comb_Center[,-14],valid_set)
+
+#d_stab <-  dist(d_s, method = "euclidean")
+
+#for (x in 1:nrow(valid_set)) { 
+  
+  #valid_set$cluster <- which.min(d_stab[x+4, 1:4])}
+
+
+#I cannot get my R code to work correctly. I know that I have to calculate the distance between the centroids of my training set to Each observation of my validation set for the whole length of observations. When I try to add my combined centers to my validation set it does not work.I get the error "names do not match previous names" when trying to bind the 2 matrices. Tobe able to knit this file i put the code producing errors as a commennt.
+
+
+```
+PART 4
+```{r}
+Healthy_data <- dataCereals[,c(1,5,9,13)]
+str(Healthy_data)
+Healthy_data <- mutate(Healthy_data,data$name,)
+d_health <- dist(Healthy_data, method = "euclidean")
+
+
+hc_health <- agnes(d_health, method = "ward" )
+
+print(hc_health$ac) #Since this is the highest aglomerative coeffiecient, it has the strongest clustering structure. We will choose the Ward linkage method.
+
+
+# Plot the obtained dendogram
+pltree(hc4, cex = 0.7, hang = -1, main = "Dendogram of Agness (Ward Linkage)",ylab = "Height (Distance Between Clusters)")
+rect.hclust(hc4,k=6,border = 1:6) # k=6 is chosen
+```
+The data should be normalized as the different "healthy"(Column such as Protein, Vitamins and rating) columns should carry the same weight in the data whilst being on different measurements. If however there is a case that we do not have to normalize it would be because we want certain aspect/columns to cary more weight in the analysis. We would pair the sronger/desired variables to that of weaker variables without scaling and then run the hierarical clustering algorythms.
