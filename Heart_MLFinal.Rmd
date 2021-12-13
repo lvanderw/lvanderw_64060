@@ -1,0 +1,135 @@
+---
+title: "Untitled"
+author: "Lukas van der Watt"
+date: "11/18/2021"
+output:
+  pdf_document: default
+  html_document: default
+  word_document: default
+spacing: double
+---
+# Business Problem
+A hospital wants to be able to understand what patients are at higher risk of developing heart disease. They have collected a set of records of information on patients with and without heart disease and would like to be able to predict and classify whether an individual is at high/low risk of developing heart disease. They would also like to know which of the data variables are more important to look at when trying to predict heart disease.
+
+They have a patient with the following data profile and would like to know the chances of this individual developing heart disease.
+Female , Age = 44, Chest Pain Type = ATA, Cholesterol = 220 , FastingBS = 1 ,ExcerciseAngina = "N" , OldPeak = 4.2 , StSlope = "Flat"
+
+```{r}
+#Calling packages required to run the various commands 
+library(ISLR)
+library(caret)
+library(e1071)
+library(ggplot2)
+library(cowplot)
+#Reading in the data
+Heart <- read.csv('heart.csv')
+str(Heart) #Looking at the structure of the data to see what kind of variables are present
+head(Heart) #Looking at the first part of the data.
+```
+```{r}
+#Converting the required variables to factors 
+Heart$Sex <-as.factor(Heart$Sex)
+Heart$ChestPainType <-as.factor(Heart$ChestPainType)
+Heart$RestingECG <-as.factor(Heart$RestingECG)
+Heart$ExerciseAngina <-as.factor(Heart$ExerciseAngina)
+Heart$ST_Slope<-as.factor(Heart$ST_Slope)
+#Omitting any missing values from the data.
+Heart<- na.omit(Heart)
+str(Heart)
+head(Heart)
+
+```
+O
+```{r}
+# Creating a table to see if  variables related to sex are distributed throughout the data set. If it is distributed throughout the data set there is no need to omit a certain variable because of uneven distribution.
+xtabs(~HeartDisease + Sex, data = Heart)
+xtabs(~ChestPainType + Sex, data = Heart)
+xtabs(~RestingECG + Sex, data = Heart)
+```
+Looking at the tales above it is clear that the variable data is distributed throughout the data.
+
+
+To be able to understand the relationship between the dependent variable and one or more independent variables in the data I am estimating probabilities using a logistic regression model. This type of analysis is used to help predict the likelihood of an event happening or a choice being made. In this case I am determining whether a patient does or does not have heart disease
+```{r}
+#Creating a logistical regression model called Log_mod
+
+Log_mod <- glm(HeartDisease ~ . , data = Heart, family = "binomial") #Specifying that the binomial family of generalized linear models are being used insures that logistic regression is being preformed with the glm() command.
+summary(Log_mod)
+```
+Interpreting the Logistic model output:
+In knowing whether a variable is statistically significant we have to look at the P value as well as the effect size (Estimate) of the variable. A P-value smaller than 0.05 is likely to be a significant variable to the target variable. A small p-value together with a higher effect size indicates that the variable is important in the determination of the target variable which is the HeartDisease variable. For Example: 
+From the above results we can see that Age p-value is at 0.292403 which is quite high and above 0.05 with an effect size of 0.0146 (smaller related to other estimates) indicating that this variable is not very useful. Sex is a good predictor because the p-value 1.50e-07 being far below 0.05. The effect size is also bigger when compared to other variables.
+
+Based on the Logistical model output I have selected the following variables: 
+Sex, ChestPainType, Cholesterol, FastingBS, ExerciseAngina, Oldpeak, ST_Slope, HeartDisease
+```{r}
+#Calculation of the McFAdden's Pseudo R^2 
+#The null
+log_liklihood_null <- Log_mod$null.deviance/-2
+log_liklihood_prop <- Log_mod$deviance/-2
+#The calculation for the Pseudo R^2: 
+(log_liklihood_null-log_liklihood_prop)/log_liklihood_null
+
+```
+This R squared is also known as the over-all effect size of the model. For the model above we get 0.5293913. This means the model explains 53% variability to the target variable. This accuracy of 53% is not very good but explains why it can be difficult in the real world to predict the development of heart disease. A way to improve this model might be to look at the genetics of the patient and family history pertaining to heart problems. Having these additional could help to improve the accuracy or over-all effect size.
+```{r}
+#Plotting a probability graph for the Logistical Regression Model
+P_data <- data.frame(Prob_HD = Log_mod$fitted.values,HD = Heart$HeartDisease)
+#Sorting the data from low to high probability
+P_data <- P_data[order(P_data$Prob_HD,decreasing = FALSE),]
+P_data$rank <- 1:nrow(P_data)
+
+ggplot(data = P_data, aes(x = rank, y = Prob_HD))+geom_point(aes(color=HD),alpha = 4,shape=1, stroke = 1)+xlab("Heart Disease Status")+ylab("Prediction Probability of Contracting Heart Disease")
+ggsave("Heart Probability.pdf")
+```
+In the above graph I am plotting the prediction of each patient contracting heart disease against their actual heart disease status. The light blue indicates that most people who have heart disease have a high probability of contracting heart disease. Similarly we can also see the low probability end indicated with the dark blue. These are patient that does not have heart disease and have a low probability of getting heart disease. We can see that there are a few cases where a patient without heart disease(dark blue markers) have a high probability of contracting heart disease at some point. This is what we want to be able to identify and predict.
+```{r}
+#Creating the Naive Bays Model
+#Partition the data into training(60) validation(40)
+selected.var <- Heart[,c(3,4,6,7,10,11,12,13)] #Selecting variables to be partitioned
+
+set.seed(123) #randomize
+train.in <- createDataPartition(selected.var$HeartDisease, p = 0.7, list = FALSE) #creating a training index with the stratification variable (HeartDisease) that contains 70% of the Universal bank data. The createdatapartition command has to have a target variable identified when the index is created. This has to be the target variable for which you want similar representation in the Training and Validation sets.
+Heart.train <- selected.var[train.in,] #Training set
+Heart.valid <- selected.var[-train.in,] #Validation set
+str(Heart.train) #structure of the training set
+
+```
+```{r}
+#Method 1: This shows the pivot table with row variables (Online and CreditCard) and the column variables(Personal.Loan) These table shows the count
+attach(Heart.train) # Attaching the training set to the following statements
+ftable(HeartDisease, Sex, ChestPainType)#Creating a pivot table with ChestPainType as a column variable and the Heart Disease and Sex as row variables
+ftable(HeartDisease,FastingBS,ExerciseAngina)#Creating a pivot table with ExerciseAngina as a column variable and the Fasting BS and ExerciseAngina as row variables
+```
+The above pivot tables show the conditional probabilities as they relate to Heart Diease.
+```{r}
+#The Following table is a probability representation of the pivot tables previously formed
+prop.table(ftable(HeartDisease, Sex, ChestPainType))
+prop.table(ftable(HeartDisease,FastingBS,ExerciseAngina))
+detach(Heart.train)
+```
+In the above results we see that the 
+
+Creating The Naive Bayes Model because I am predicting the probability of different classes. I am making the assumption of independence. Meaning it is making the prediction that the effect of the value of a predictor (x) on a given class (c) is independent of the values of other predictors. In this dataset it (real world data) is very rare that there would be predictors which are completely independent. Nevertheless it is a technique that performs well with categorical variables where a sick/not-sick outcome is expected and despite the literal naive assumption of idependance the technique does very well as it ouperforms more sophisticated methods.
+```{r}
+Heartdata.nb <- naiveBayes(HeartDisease~., data = Heart.train)# Creating the Naive Bayes Model on the training set. Using all variables as they relate to the target variable HeartDisease
+Heartdata.nb # Showcasing the model
+pre <- predict(Heartdata.nb,Heart.valid)#Class membership
+pre.prob <- predict(Heartdata.nb,newdata = Heart.valid,type = "raw")#Probabilities
+```
+
+```{r}
+Heart.valid$HeartDisease<-as.factor(Heart.valid$HeartDisease)
+cfm <- confusionMatrix(pre,Heart.valid$HeartDisease)
+cfm
+```
+Bear in mind that a 0 indicates the patient is normal where a 1 indicates the presence of Heart Disease.
+False Negatives : A Total of 19 cases of the 275 observations in the validation set
+False Positives : A total of 15 cases of the 275 observations in the validation set
+Therefore a total of 34 missclassification errors
+
+Sensitivity (TP + FN) is the proportion of positives correctly identified and in this Naive Bayes model we see that 87.5% of the positives are correctly identified.
+
+Specificity is the True Negative Rate and in this model we see that  87.7% of the negatives are correctly identified.
+
+
